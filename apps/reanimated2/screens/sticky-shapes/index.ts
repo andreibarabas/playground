@@ -1,0 +1,1 @@
+export {default as StickyShapesScreen} from "./sticky-shapes-view";
