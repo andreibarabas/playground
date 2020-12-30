@@ -1,11 +1,12 @@
 import React from "react";
-import { View, Text } from "react-native";
-import Animated from "react-native-reanimated";
+import { View, StyleSheet } from "react-native";
+import Animated, { useAnimatedProps } from "react-native-reanimated";
+import SquareView from "./square-view";
 
 export default function StickyShapesView() {
   return (
-    <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-      <Animated.View></Animated.View>
+    <View style={StyleSheet.absoluteFill}>
+      <SquareView />
     </View>
   );
 }
