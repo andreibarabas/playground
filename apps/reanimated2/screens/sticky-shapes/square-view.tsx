@@ -1,5 +1,6 @@
 import React from "react";
 import Animated, {
+  Extrapolate,
   interpolate,
   useAnimatedProps,
 } from "react-native-reanimated";
@@ -16,18 +17,19 @@ const AnimatedPath = Animated.createAnimatedComponent(Path);
 
 const H_FACTOR = 0.3;
 const V_FACTOR = 2.5;
-const SIZE = 150;
+export const SIZE = 100;
+export const MAX_HEIGHT = V_FACTOR * SIZE;
 
 /**
  * Render the square component
  */
-export default function SquareView() {
-  const progress = 1;
+const SquareView: React.FC<SquareViewProps> = (props) => {
+  const { progress } = props;
 
   const animatedProps = useAnimatedProps(() => {
     const deformation = {
-      x: interpolate(progress, [0, 1], [0, SIZE * H_FACTOR]),
-      y: interpolate(progress, [0, 1], [1, V_FACTOR]),
+      x: interpolate(progress.value, [0, 1], [0, SIZE * H_FACTOR]),
+      y: interpolate(progress.value, [0, 1], [1, V_FACTOR]),
     };
 
     // the square points
@@ -75,4 +77,10 @@ export default function SquareView() {
       <AnimatedPath animatedProps={animatedProps} fill="#7EDAB9" />
     </Svg>
   );
-}
+};
+
+export default SquareView;
+
+type SquareViewProps = {
+  progress: Animated.SharedValue<number>;
+};
