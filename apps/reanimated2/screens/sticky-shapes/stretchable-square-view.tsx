@@ -19,7 +19,7 @@ import mixPoint from "../../utils/mixPoint";
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 
-const H_FACTOR = 0.2;
+const H_FACTOR = 0.4;
 const V_FACTOR = 2.5;
 export const SIZE = 100;
 export const MAX_HEIGHT = SIZE * V_FACTOR;
