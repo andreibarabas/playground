@@ -2,6 +2,7 @@ import React from "react";
 import { View, StyleSheet, StyleProp, ViewStyle } from "react-native";
 import { PanGestureHandler } from "react-native-gesture-handler";
 import Animated, {
+  cancelAnimation,
   Extrapolate,
   interpolate,
   interpolateColor,
@@ -21,45 +22,53 @@ import StretchableSquareView, {
   MAX_HEIGHT,
   SIZE,
 } from "./stretchable-square-view";
+import fixVelocity from "./utils/fixVelocity";
 
 const StretchableSquareContainer: React.FC<StretchableSquareContainerProps> = (
   props
 ) => {
-  const state = useSharedValue(props.initialValue);
+  const atTop = useSharedValue(props.initialValue, false);
 
   const sticked = useSharedValue(true);
   const translationY = useSharedValue(0);
   const dest = useSharedValue(0);
-  const containerRef = useAnimatedRef<Animated.View>();
+  const containerHeight = useSharedValue(0);
 
+  //
+  //
+  //
   const gestureHandler = useAnimatedGestureHandler({
     onStart: (_, ctx) => {
-      // ctx.startX = x.value;
+      //we need first to cancel any ongoing spring animations
+      cancelAnimation(translationY);
     },
     onActive: (event, ctx) => {
-      translationY.value = event.translationY;
+      translationY.value = Math.max(event.translationY, 0); //so we can't drag up
 
       if (translationY.value > MAX_HEIGHT) {
         sticked.value = false;
       }
 
       //calculate the potential snapping point, if now we would release the
-      //TODO: move to useAnimatedOnLayout once it becomes available
-      const measured = measure(containerRef);
-      dest.value = snapPoint(translationY.value, event.velocityY, [
-        0,
-        measured.height - SIZE,
-      ]);
+      //but take into consideration the middle of the square
+      dest.value = snapPoint(
+        translationY.value,
+        fixVelocity(atTop.value, event.velocityY),
+        [0, containerHeight.value - SIZE]
+      );
     },
-    onEnd: ({ velocityY }) => {
+    onEnd: (event) => {
       translationY.value = withSpring(
         dest.value,
-        { velocity: velocityY },
+        { velocity: fixVelocity(atTop.value, event.velocityY) },
         () => {
           sticked.value = true;
 
           //we have finished snapping to the opposite side
           if (dest.value !== 0) {
+            //finish changing the internal toogle state
+            atTop.value = !atTop.value;
+
             //and since we are rotating the view, reset those states as well
             dest.value = 0;
             translationY.value = 0;
@@ -67,13 +76,11 @@ const StretchableSquareContainer: React.FC<StretchableSquareContainerProps> = (
         }
       ); //release with a spring animation
 
-      //imediatelly once we finish the gesture
+      //imediatelly once we end the gesture (not the animation)
       //we should call the onChange
       if (dest.value !== 0) {
-        //so change the state
-        state.value = !state.value;
-
-        runOnJS(props.onChange)(state.value);
+        //notify the JS that the internal state is changing
+        runOnJS(props.onChange)(!atTop.value);
       }
     },
   });
@@ -87,10 +94,10 @@ const StretchableSquareContainer: React.FC<StretchableSquareContainerProps> = (
   );
 
   //
-  // the deformation depends on the pull + when it's changes from sticking to floating
+  // the stretch depends on the pull + when it's changes from sticking to floating
   // we need to take that into consideration as well
   //
-  const deformationProgress = useDerivedValue(
+  const stretchProgress = useDerivedValue(
     () =>
       isStickingProgress.value *
       interpolate(
@@ -112,28 +119,33 @@ const StretchableSquareContainer: React.FC<StretchableSquareContainerProps> = (
   }));
 
   //
-  // whenever the snapping destination changes, animate the color transition
-  // according to this progress
+  // animate the color transition according to the starting poin (on / off)
+  // and translation progress
   //
   const colorProgress = useDerivedValue(() =>
-    withTiming(dest.value !== 0 ? 1 : 0)
+    withTiming(
+      (atTop.value && dest.value !== 0) || (!atTop.value && dest.value === 0)
+        ? 1
+        : 0
+    )
   );
 
   const containerStyle = useAnimatedStyle(() => ({
-    //  transform: [{ rotate: state.value ? "0deg" : "180deg" }],
+    transform: [{ rotate: atTop.value ? "0deg" : "180deg" }],
   }));
-
-  console.log("state", state.value);
 
   return (
     <Animated.View
-      ref={containerRef}
       style={[styles.container, props.style, containerStyle]}
+      //TODO: move to native once useAnimatedOnLayout is available
+      onLayout={(event) => {
+        containerHeight.value = event.nativeEvent.layout.height;
+      }}
     >
       <PanGestureHandler onGestureEvent={gestureHandler}>
-        <Animated.View style={animatedStyle}>
+        <Animated.View style={[styles.innerContainer, animatedStyle]}>
           <StretchableSquareView
-            progress={deformationProgress}
+            progress={stretchProgress}
             colorProgress={colorProgress}
           />
         </Animated.View>
@@ -152,4 +164,5 @@ type StretchableSquareContainerProps = {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  innerContainer: { alignItems: "center" },
 });

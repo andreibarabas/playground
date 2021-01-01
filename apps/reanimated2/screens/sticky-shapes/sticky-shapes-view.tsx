@@ -9,21 +9,26 @@ export default function StickyShapesView() {
 
   return (
     <>
-      <Text>
-        States: {toogle1 ? "on" : "off"} - {toogle2 ? "on" : "off"} -{" "}
-        {toogle3 ? "on" : "off"}
-      </Text>
       <View style={styles.container}>
         <StretchableSquare initialValue={toogle1} onChange={setToogle1} />
         <StretchableSquare initialValue={toogle2} onChange={setToogle2} />
         <StretchableSquare initialValue={toogle3} onChange={setToogle3} />
       </View>
+      <Text style={styles.status}>
+        States: {toogle1 ? "true" : "false"} - {toogle2 ? "true" : "false"} -{" "}
+        {toogle3 ? "true" : "false"}
+      </Text>
     </>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
     flexDirection: "row",
+  },
+  status: {
+    textAlign: "center",
+    backgroundColor: "yellow",
   },
 });

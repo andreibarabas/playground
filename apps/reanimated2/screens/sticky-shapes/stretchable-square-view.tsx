@@ -4,6 +4,8 @@ import Animated, {
   interpolate,
   interpolateColor,
   useAnimatedProps,
+  useAnimatedStyle,
+  useDerivedValue,
 } from "react-native-reanimated";
 import {
   addCurve,
@@ -18,6 +20,7 @@ import Svg, { Path } from "react-native-svg";
 import mixPoint from "../../utils/mixPoint";
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
+const AnimatedSvg = Animated.createAnimatedComponent(Svg);
 
 const H_FACTOR = 0.4;
 const V_FACTOR = 2.5;
@@ -30,17 +33,25 @@ export const MAX_HEIGHT = SIZE * V_FACTOR;
 const StretchableSquareView: React.FC<StretchableSquareViewProps> = (props) => {
   const { progress, colorProgress } = props;
 
+  const scaleY = useDerivedValue(() =>
+    interpolate(progress.value, [0, 1], [1, V_FACTOR])
+  );
+
+  //
+  // Define the stretchable square
+  //
   const animatedProps = useAnimatedProps(() => {
-    const deformation = {
-      x: interpolate(progress.value, [0, 1], [0, SIZE * H_FACTOR]),
-      y: interpolate(progress.value, [0, 1], [1, V_FACTOR]),
-    };
+    const deformationX = interpolate(
+      progress.value,
+      [0, 1],
+      [0, SIZE * H_FACTOR]
+    );
 
     // the square's points
     const topLeading = { x: 0, y: 0 };
     const topTrailing = { x: SIZE, y: 0 };
-    const bottomTrailing = { x: SIZE - deformation.x, y: SIZE * deformation.y };
-    const bottomLeading = { x: 0 + deformation.x, y: SIZE * deformation.y };
+    const bottomTrailing = { x: SIZE - deformationX, y: SIZE * scaleY.value };
+    const bottomLeading = { x: 0 + deformationX, y: SIZE * scaleY.value };
 
     // build the path from the top left point
     const path = createPath(topLeading);
@@ -75,10 +86,20 @@ const StretchableSquareView: React.FC<StretchableSquareViewProps> = (props) => {
     };
   });
 
+  //
+  // SVG by default takes the full size of the parent
+  // but we want to take the size of the square
+  //
+  const animatedStyle = useAnimatedStyle(() => ({
+    width: SIZE,
+    height: SIZE * scaleY.value,
+    backgroundColor: "pink",
+  }));
+
   return (
-    <Svg>
+    <AnimatedSvg style={animatedStyle}>
       <AnimatedPath animatedProps={animatedProps} />
-    </Svg>
+    </AnimatedSvg>
   );
 };
 
