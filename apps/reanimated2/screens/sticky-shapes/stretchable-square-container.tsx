@@ -17,9 +17,14 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import { mixColor, snapPoint } from "react-native-redash";
-import SquareView, { MAX_HEIGHT, SIZE } from "./square-view";
+import StretchableSquareView, {
+  MAX_HEIGHT,
+  SIZE,
+} from "./stretchable-square-view";
 
-const SquareContainer: React.FC<SquareContainerProps> = (props) => {
+const StretchableSquareContainer: React.FC<StretchableSquareContainerProps> = (
+  props
+) => {
   const state = useSharedValue(props.initialValue);
 
   const sticked = useSharedValue(true);
@@ -127,7 +132,7 @@ const SquareContainer: React.FC<SquareContainerProps> = (props) => {
     >
       <PanGestureHandler onGestureEvent={gestureHandler}>
         <Animated.View style={animatedStyle}>
-          <SquareView
+          <StretchableSquareView
             progress={deformationProgress}
             colorProgress={colorProgress}
           />
@@ -137,9 +142,9 @@ const SquareContainer: React.FC<SquareContainerProps> = (props) => {
   );
 };
 
-export default SquareContainer;
+export default StretchableSquareContainer;
 
-type SquareContainerProps = {
+type StretchableSquareContainerProps = {
   initialValue: boolean; //the initial value of the toggle
   onChange: (value: boolean) => void;
   style?: StyleProp<ViewStyle>;
