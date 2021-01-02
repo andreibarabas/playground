@@ -23,26 +23,20 @@ const AnimatedPath = Animated.createAnimatedComponent(Path);
 const AnimatedSvg = Animated.createAnimatedComponent(Svg);
 
 const H_FACTOR = 0.4;
-const V_FACTOR = 2.5;
 export const SIZE = 100;
-export const MAX_HEIGHT = SIZE * V_FACTOR;
 
 /**
  * Render the square component, based on the specified animation progress
  */
 const StretchableSquareView: React.FC<StretchableSquareViewProps> = (props) => {
-  const { progress, colorProgress } = props;
-
-  const scaleY = useDerivedValue(() =>
-    interpolate(progress.value, [0, 1], [1, V_FACTOR])
-  );
+  const { stretchFactor, scaleY, colorProgress } = props;
 
   //
   // Define the stretchable square
   //
   const animatedProps = useAnimatedProps(() => {
     const deformationX = interpolate(
-      progress.value,
+      stretchFactor.value,
       [0, 1],
       [0, SIZE * H_FACTOR]
     );
@@ -62,7 +56,7 @@ const StretchableSquareView: React.FC<StretchableSquareViewProps> = (props) => {
     // the right quadratic bezier curve (single control point)
     addQuadraticCurve(
       path,
-      { x: bottomTrailing.x, y: topTrailing.y + SIZE * 0.1 },
+      { x: bottomTrailing.x, y: topTrailing.y + SIZE * 0.1 * scaleY.value },
       bottomTrailing
     );
 
@@ -72,7 +66,7 @@ const StretchableSquareView: React.FC<StretchableSquareViewProps> = (props) => {
     // the left quadratic bezier curve (single control point)
     addQuadraticCurve(
       path,
-      { x: bottomLeading.x, y: topLeading.y + SIZE * 0.1 },
+      { x: bottomLeading.x, y: topLeading.y + SIZE * 0.1 * scaleY.value },
       topLeading
     );
 
@@ -93,7 +87,6 @@ const StretchableSquareView: React.FC<StretchableSquareViewProps> = (props) => {
   const animatedStyle = useAnimatedStyle(() => ({
     width: SIZE,
     height: SIZE * scaleY.value,
-    backgroundColor: "pink",
   }));
 
   return (
@@ -106,6 +99,7 @@ const StretchableSquareView: React.FC<StretchableSquareViewProps> = (props) => {
 export default StretchableSquareView;
 
 type StretchableSquareViewProps = {
-  progress: Animated.SharedValue<number>;
+  stretchFactor: Animated.SharedValue<number>;
+  scaleY: Animated.SharedValue<number>;
   colorProgress: Animated.SharedValue<number>;
 };

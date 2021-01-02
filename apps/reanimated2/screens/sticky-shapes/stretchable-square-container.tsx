@@ -18,10 +18,7 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import { mixColor, snapPoint } from "react-native-redash";
-import StretchableSquareView, {
-  MAX_HEIGHT,
-  SIZE,
-} from "./stretchable-square-view";
+import StretchableSquareView, { SIZE } from "./stretchable-square-view";
 import fixVelocity from "./utils/fixVelocity";
 
 const StretchableSquareContainer: React.FC<StretchableSquareContainerProps> = (
@@ -33,6 +30,7 @@ const StretchableSquareContainer: React.FC<StretchableSquareContainerProps> = (
   const translationY = useSharedValue(0);
   const dest = useSharedValue(0);
   const containerHeight = useSharedValue(0);
+  const stickyThreshold = useDerivedValue(() => containerHeight.value * 0.25);
 
   //
   //
@@ -45,7 +43,7 @@ const StretchableSquareContainer: React.FC<StretchableSquareContainerProps> = (
     onActive: (event, ctx) => {
       translationY.value = Math.max(event.translationY, 0); //so we can't drag up
 
-      if (translationY.value > MAX_HEIGHT) {
+      if (translationY.value > stickyThreshold.value) {
         sticked.value = false;
       }
 
@@ -53,7 +51,7 @@ const StretchableSquareContainer: React.FC<StretchableSquareContainerProps> = (
       //but take into consideration the middle of the square
       dest.value = snapPoint(
         translationY.value,
-        fixVelocity(atTop.value, event.velocityY),
+        0, //TODO: fixVelocity(atTop.value, event.velocityY),
         [0, containerHeight.value - SIZE]
       );
     },
@@ -86,26 +84,11 @@ const StretchableSquareContainer: React.FC<StretchableSquareContainerProps> = (
   });
 
   //
-  // when we move from sticked to not sticked, we want to transition the shape between
-  // deformed one to normal square one, so we a using this progress
+  // when we move from sticked to not sticked, we want to transition the shape and position
+  // between stretched one to normal square one, so we a using this morph progress
   //
-  const isStickingProgress = useDerivedValue(() =>
+  const morphProgress = useDerivedValue(() =>
     withSpring(sticked.value ? 1 : 0)
-  );
-
-  //
-  // the stretch depends on the pull + when it's changes from sticking to floating
-  // we need to take that into consideration as well
-  //
-  const stretchProgress = useDerivedValue(
-    () =>
-      isStickingProgress.value *
-      interpolate(
-        translationY.value,
-        [0, MAX_HEIGHT],
-        [0, 1],
-        Extrapolate.CLAMP
-      )
   );
 
   //
@@ -113,10 +96,28 @@ const StretchableSquareContainer: React.FC<StretchableSquareContainerProps> = (
   // move slowly to the position, and not be abrupt
   //
   const animatedStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateY: (1 - isStickingProgress.value) * translationY.value },
-    ],
+    transform: [{ translateY: (1 - morphProgress.value) * translationY.value }],
   }));
+
+  //
+  // SVG & Animated Path doesn't play nice with scale, so we need to send them directly scale value
+  //
+  const scaleY = useDerivedValue(
+    () => 1 + (morphProgress.value * translationY.value) / SIZE
+  );
+
+  //
+  //
+  //
+  const stretchFactor = useDerivedValue(() => {
+    const stickyThreshold = containerHeight.value * 0.3;
+    const distanceToThreshold =
+      stickyThreshold - translationY.value * morphProgress.value;
+    const normalizedDistanceToThreshold =
+      stickyThreshold > 0 ? distanceToThreshold / stickyThreshold : 1;
+
+    return 1 - normalizedDistanceToThreshold;
+  });
 
   //
   // animate the color transition according to the starting poin (on / off)
@@ -145,7 +146,8 @@ const StretchableSquareContainer: React.FC<StretchableSquareContainerProps> = (
       <PanGestureHandler onGestureEvent={gestureHandler}>
         <Animated.View style={[styles.innerContainer, animatedStyle]}>
           <StretchableSquareView
-            progress={stretchProgress}
+            stretchFactor={stretchFactor}
+            scaleY={scaleY}
             colorProgress={colorProgress}
           />
         </Animated.View>
