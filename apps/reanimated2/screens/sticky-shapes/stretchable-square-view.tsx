@@ -24,6 +24,7 @@ const AnimatedSvg = Animated.createAnimatedComponent(Svg);
 
 const H_FACTOR = 0.4;
 export const SIZE = 100;
+const X_OFFSET = SIZE / 2; //so we account for the negative deformations due to spring animation
 
 /**
  * Render the square component, based on the specified animation progress
@@ -31,21 +32,25 @@ export const SIZE = 100;
 const StretchableSquareView: React.FC<StretchableSquareViewProps> = (props) => {
   const { stretchFactor, scaleY, colorProgress } = props;
 
+  const deformationX = useDerivedValue(() =>
+    interpolate(stretchFactor.value, [0, 1], [0, SIZE * H_FACTOR])
+  );
+
   //
   // Define the stretchable square
   //
   const animatedProps = useAnimatedProps(() => {
-    const deformationX = interpolate(
-      stretchFactor.value,
-      [0, 1],
-      [0, SIZE * H_FACTOR]
-    );
-
     // the square's points
-    const topLeading = { x: 0, y: 0 };
-    const topTrailing = { x: SIZE, y: 0 };
-    const bottomTrailing = { x: SIZE - deformationX, y: SIZE * scaleY.value };
-    const bottomLeading = { x: 0 + deformationX, y: SIZE * scaleY.value };
+    const topLeading = { x: X_OFFSET, y: 0 };
+    const topTrailing = { x: X_OFFSET + SIZE, y: 0 };
+    const bottomTrailing = {
+      x: X_OFFSET + SIZE - Math.max(deformationX.value, 0),
+      y: SIZE * scaleY.value,
+    };
+    const bottomLeading = {
+      x: X_OFFSET + Math.max(deformationX.value, 0),
+      y: SIZE * scaleY.value,
+    };
 
     // build the path from the top left point
     const path = createPath(topLeading);
@@ -56,7 +61,10 @@ const StretchableSquareView: React.FC<StretchableSquareViewProps> = (props) => {
     // the right quadratic bezier curve (single control point)
     addQuadraticCurve(
       path,
-      { x: bottomTrailing.x, y: topTrailing.y + SIZE * 0.1 * scaleY.value },
+      {
+        x: X_OFFSET + SIZE - deformationX.value,
+        y: topTrailing.y + SIZE * 0.1 * scaleY.value,
+      },
       bottomTrailing
     );
 
@@ -66,7 +74,10 @@ const StretchableSquareView: React.FC<StretchableSquareViewProps> = (props) => {
     // the left quadratic bezier curve (single control point)
     addQuadraticCurve(
       path,
-      { x: bottomLeading.x, y: topLeading.y + SIZE * 0.1 * scaleY.value },
+      {
+        x: X_OFFSET + deformationX.value,
+        y: topLeading.y + SIZE * 0.1 * scaleY.value,
+      },
       topLeading
     );
 
@@ -85,7 +96,7 @@ const StretchableSquareView: React.FC<StretchableSquareViewProps> = (props) => {
   // but we want to take the size of the square
   //
   const animatedStyle = useAnimatedStyle(() => ({
-    width: SIZE,
+    width: SIZE * 2,
     height: SIZE * scaleY.value,
   }));
 

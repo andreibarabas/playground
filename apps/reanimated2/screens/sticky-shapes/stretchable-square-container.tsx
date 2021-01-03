@@ -21,6 +21,10 @@ import { mixColor, snapPoint } from "react-native-redash";
 import StretchableSquareView, { SIZE } from "./stretchable-square-view";
 import fixVelocity from "./utils/fixVelocity";
 
+const SpringAnimationConfig: Animated.WithSpringConfig = {
+  damping: 6, //reduce a little the friction, so we have a little longer running animation
+};
+
 const StretchableSquareContainer: React.FC<StretchableSquareContainerProps> = (
   props
 ) => {
@@ -33,6 +37,14 @@ const StretchableSquareContainer: React.FC<StretchableSquareContainerProps> = (
   const stickyThreshold = useDerivedValue(() => containerHeight.value * 0.25);
 
   //
+  // when we move from sticked to not sticked, we want to transition the shape and position
+  // between stretched one to normal square one, so we a using this morph progress
+  //
+  const morphProgress = useDerivedValue(() =>
+    withSpring(sticked.value ? 1 : 0, SpringAnimationConfig)
+  );
+
+  //
   //
   //
   const gestureHandler = useAnimatedGestureHandler({
@@ -41,7 +53,7 @@ const StretchableSquareContainer: React.FC<StretchableSquareContainerProps> = (
       cancelAnimation(translationY);
     },
     onActive: (event, ctx) => {
-      translationY.value = Math.max(event.translationY, 0); //so we can't drag up
+      translationY.value = event.translationY;
 
       if (translationY.value > stickyThreshold.value) {
         sticked.value = false;
@@ -58,7 +70,10 @@ const StretchableSquareContainer: React.FC<StretchableSquareContainerProps> = (
     onEnd: (event) => {
       translationY.value = withSpring(
         dest.value,
-        { velocity: fixVelocity(atTop.value, event.velocityY) },
+        {
+          ...SpringAnimationConfig,
+          velocity: fixVelocity(atTop.value, event.velocityY),
+        },
         () => {
           sticked.value = true;
 
@@ -84,19 +99,18 @@ const StretchableSquareContainer: React.FC<StretchableSquareContainerProps> = (
   });
 
   //
-  // when we move from sticked to not sticked, we want to transition the shape and position
-  // between stretched one to normal square one, so we a using this morph progress
-  //
-  const morphProgress = useDerivedValue(() =>
-    withSpring(sticked.value ? 1 : 0)
-  );
-
-  //
   // when changing from sticking to floating, we want the top part of the square to also
   // move slowly to the position, and not be abrupt
   //
   const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: (1 - morphProgress.value) * translationY.value }],
+    transform: [
+      {
+        translateY: Math.max(
+          sticked.value ? 0 : (1 - morphProgress.value) * translationY.value,
+          0
+        ), //so we damp the animation and not move the toogle outside of the screen
+      },
+    ],
   }));
 
   //
